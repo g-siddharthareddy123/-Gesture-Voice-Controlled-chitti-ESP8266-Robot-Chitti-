@@ -1,0 +1,105 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>  // Optional: for esp8266.local
+
+// WiFi credentials
+const char* ssid = "Tp";
+const char* password = "88531526";
+
+// Motor pins
+#define ENA D0
+#define IN1 D1
+#define IN2 D2
+#define IN3 D3
+#define IN4 D4
+#define ENB D5
+
+ESP8266WebServer server(80);
+
+// Motor speed (0–1023)
+const int MOTOR_SPEED = 1023;
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  stopMotors();
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500); Serial.print(".");
+  }
+
+  Serial.println("\n✅ WiFi connected!");
+  Serial.print("IP address: "); Serial.println(WiFi.localIP());
+
+  if (MDNS.begin("esp8266")) {
+    Serial.println("🟢 mDNS responder started (http://esp8266.local)");
+  }
+
+  // Routes
+  server.on("/forward", forward);
+  server.on("/back", backward);
+  server.on("/left", leftTurn);
+  server.on("/right", rightTurn);
+  server.on("/stop", stopMotors);
+
+  server.begin();
+  Serial.println("📡 Web server started.");
+}
+
+void loop() {
+  server.handleClient();
+}
+
+// Movement functions
+void forward() {
+  Serial.println("🚗 Moving FORWARD");
+  digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
+  analogWrite(ENA, MOTOR_SPEED);
+  analogWrite(ENB, MOTOR_SPEED);
+  server.send(200, "text/plain", "Forward");
+}
+
+void backward() {
+  Serial.println("🔙 Moving BACK");
+  digitalWrite(IN1, LOW); digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, HIGH);
+  analogWrite(ENA, MOTOR_SPEED);
+  analogWrite(ENB, MOTOR_SPEED);
+  server.send(200, "text/plain", "Back");
+}
+
+void leftTurn() {
+  Serial.println("↩️ Turning LEFT");
+  digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
+  analogWrite(ENA, MOTOR_SPEED);
+  analogWrite(ENB, MOTOR_SPEED);
+  server.send(200, "text/plain", "Left");
+}
+
+void rightTurn() {
+  Serial.println("↪️ Turning RIGHT");
+  digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+  analogWrite(ENA, MOTOR_SPEED);
+  analogWrite(ENB, MOTOR_SPEED);
+  server.send(200, "text/plain", "Right");
+}
+
+void stopMotors() {
+  Serial.println("✋ STOPPED");
+  digitalWrite(IN1, LOW); digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
+  analogWrite(ENA, 0); analogWrite(ENB, 0);
+  server.send(200, "text/plain", "Stop");
+}
